@@ -11,11 +11,11 @@ The repository provides analysis pipelines for both mother-machine (mm) and conn
 ## Installation Instructions
 
 ### MATLAB Preprocessing
-- Preprocessing scripts require MATLAB (versions 2022a to 2025b tested) and the following toolboxes: `Image Processing Toolbox`, `Computer Vision Toolbox`, and `Bio-Formats Toolbox`. [Download the Bio-Formats Toolbox](https://www.openmicroscopy.org/bio-formats/downloads/).
+- Preprocessing scripts require MATLAB (versions 2022a to 2025b tested) and the following toolboxes: `Image Processing Toolbox`, `Computer Vision Toolbox`, and `Bio-Formats Toolbox`. [Download the Bio-Formats Toolbox](https://www.openmicroscopy.org/bio-formats/downloads/). The Bio-Formats Reader is included in the repo.
 - Installation duration varies based on internet connectivity.
 
 ### Python for Segmentation and Tracking
-- Segmentation with StarDist and cell tracking with DeLTA2.0 are performed within within Python, each within its dedicated Conda environment. Environment YAML files are located in the `envs` folder.
+- Segmentation with StarDist and cell tracking with DeLTA2.0 are performed within Python, each within its dedicated Conda environment. Environment YAML files are located in the `envs` folder.
 - Install Conda or [Mamba (preferred)](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html) and create the environments using `conda env create -f jbstardist.yaml` and `conda env create -f jbdelta.yaml`. For reduced installation times, use `mamba` instead of `conda`.
 - Please refer to TensorFlow instructions for your own OS to use GPU acceleration. For example, on Windows with Nvidia GPUs, install the current Nvidia drivers and Cuda-Toolkit. Ensure `CUDA_HOME` is correctly set in your path variables, pointing to the Cuda-Toolkit installation directory.
 - The scripts have been tested on three independent Windows (10 and 11) computers with the provided conda envs.
