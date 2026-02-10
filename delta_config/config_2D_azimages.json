@@ -1,0 +1,40 @@
+{
+  "presets": "2D",
+  "models": [
+    "segmentation",
+    "tracking"
+  ],
+  "model_file_rois": "",
+  "model_file_seg": "C:\\Users\\zinke\\Documents\\GitHub\\deltamodels\\unet_pads_seg.hdf5",
+  "model_file_track": "C:\\Users\\zinke\\Documents\\GitHub\\deltamodels\\unet_pads_track.hdf5",
+  "target_size_rois": [
+    256,
+    256
+  ],
+  "target_size_seg": [
+    256,
+    256
+  ],
+  "target_size_track": [
+    256,
+    256
+  ],
+  "training_set_rois": "",
+  "training_set_seg": "",
+  "training_set_track": "",
+  "eval_movie": "D:\\GitHub\\I2ICourse\\Project2B\\RawData",
+  "rotation_correction": false,
+  "drift_correction": false,
+  "crop_windows": true,
+  "min_roi_area": 800,
+  "whole_frame_drift": false,
+  "min_cell_area": 2,
+  "save_format": [
+    "pickle",
+    "movie"
+  ],
+  "TF_CPP_MIN_LOG_LEVEL": "2",
+  "memory_growth_limit": null,
+  "pipeline_seg_batch": 32,
+  "pipeline_track_batch": 32
+}
