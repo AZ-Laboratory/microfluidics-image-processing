@@ -27,7 +27,7 @@ end
 % mainconfigname = 'config_example_matched.json';
 mainconfigname = 'config_example_mixed.json';
 
-configdir = 'G://GitHub/microfluidics-image-processing/MM_pipeline';
+configdir = 'C://Users/zinke/Documents/GitHub/microfluidics-image-processing/MM_pipeline';
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

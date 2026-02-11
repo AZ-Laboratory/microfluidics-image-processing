@@ -1,7 +1,0 @@
-replicate,pos,TopStrain,BotStrain,type,media,flow,Btype,MaxFr,Exclude,dt,Notes,Process,rotangle,StageX,StageY,PxinUmX,PxinUmY,BarrierYincrop,chamberbox1,chamberbox2,chamberbox3,chamberbox4,register,stardist,stardist_fails
-b02,8,MW2,LAC,Compete,TSB50,0.25,bar,,,5,,10618,0.5,-63515.59516,-37742.72767,0.065,0.065,760,527,347,713,1467,Done,Done,
-b03,29,LAC,502a,Compete,TSB50,0.25,bar,250,,5,,10672,0.25,-55537.13005,-39137.54106,0.065,0.065,753,593,323,747,1467,Done,Done,
-b14,30,LAC,502a,Compete,TSB50,0.25,bar,105,,15,,12090,-93,-59892.3828,-34289.97056,0.065,0.065,713,820,377,740,1467,Done,Done,
-b16,49,MNTG,LAC,Compete,TSB50,0.25,bar,120,,15,,12166,-91,-58403.87741,-38595.14786,0.065,0.065,773,573,387,707,1467,Done,Done,
-b19,51,MW2,LAC,Compete,TSB50,0.25,bar,,,5,,11969,-91,-47656.48269,-34944.61279,0.065,0.065,720,707,283,747,1467,Done,Done,
-b20,7,LAC,MNTG,Compete,TSB50,0.25,bar,270,,15,,12401,-92,-74765.61197,-33582.55513,0.065,0.065,773,767,377,740,1467,Done,Done,

@@ -20,8 +20,8 @@ end
 
 %%%%% two parameters need to be set by user! %%%%
 % directory of config file storage
-mainconfigname = 'jbanalysisconfig_cc.json';
-configdir = 'D:\GitHub\azimages\julian\CC_pipeline\';
+mainconfigname = 'config_example_cc';
+configdir = 'C://Users/zinke/Documents/GitHub/microfluidics-image-processing/CC_pipeline/';
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -54,15 +54,25 @@ metaname = fullfile([masterdir, filesep, metacsv]);
 meta = preprocessMetaTable(metaname);
 
 % Logical array where true indicates a valid entry
-validEntries = ~isnan(meta.rotangle) & meta.rotangle >= -360 & meta.rotangle <= 360;
+validEntries = (~isnan(meta.rotangle) & meta.rotangle >= -360 & meta.rotangle <= 360) | strcmp(meta.Exclude, 'excl');
 
 % Check if all entries in 'rotangle' are valid
 allValid = all(validEntries);
 
 if ~allValid
-    msgbox('Please run 1_rotation.mat first to define rotation angle for all replicates.', 'missing info', 'error')
+    msgbox('Please run s1_rotation.mat first to define rotation angle for all replicates.', 'missing info', 'error')
     return
 end
+
+% get current script path to find the bioformats reader
+currentScriptPath = fileparts(mfilename('fullpath'));
+% Go up one level to the repository root
+repoRoot = fileparts(currentScriptPath);
+% Construct the path to the helper functions
+helperFunctionsPath = fullfile(repoRoot, 'MM_pipeline', 'helperfunctions', 'bfmatlab');
+% Add the path
+addpath(genpath(helperFunctionsPath));
+
 
 % sort meta file and get all replicate names
 meta = sortrows(meta, {'replicate', 'pos'}, 'ascend');
@@ -105,48 +115,56 @@ for repi = 1:length(allrep)
     end
     % get id of replicate and main directory
     replind = strcmp((meta.replicate), replicate);
-    maindir = fullfile(masterdir, char(replicate));
+    maindir = fullfile(masterdir, 'raw', char(replicate));
 
     cd(maindir) %set directory to main folder
     alldir=dir('_*'); %list of all dirs inside the main containing images
     
     if sum(isnan(meta.Process(replind)))==0
         procL = meta.Process(replind);
+        posL = 1:size(procL,1);
     else
         procL = [];
+        posL = 1:size(alldir, 1);
     end
 
     % position list based on meta file
-    posL = meta.pos(replind)';
     allC=1; %don't change...
     curpos = 0;
     for posi=posL %go over all folders
         % get index of current position
-        metai = strcmp(meta.replicate,  char(replicate)) & meta.pos == posi;
+        replind = strcmp(meta.replicate, replicate);
+        curpos = curpos+1;
+        if isempty(procL)
+            % get process number (olympus position ID) from folder name
+            dird=fullfile(maindir, alldir(posi).name, 'stack1'); %get dir of image
+            procnr = str2double(extract(alldir(posi).name, digitsPattern));
+            metai = replind & meta.pos == posi;
+            meta.Process(metai) = procnr;
+        else
+            procnr = procL(posi);
+            dird=fullfile(maindir, ['_Process_', num2str(procnr), '_'], 'stack1'); %get dir of image
+        end
+        metai = replind & meta.Process == procnr;
+
         if strcmp(meta.Exclude(metai), 'excl'); continue; end
         if strcmp(meta.register(metai), 'Done'); continue; end
     
             % display to user which folder is processed currently
-        curpos = curpos+1;
+        
         disp(['Replicate: ', char(replicate), ' (', num2str(repi, '%02.f'),'/',num2str(length(allrep),'%02.f'),...
                 ') | Position Nr. ', num2str(posi, '%02.f'),' (',num2str(curpos,'%02.f'), '/' num2str(length(posL),'%02.f'), ')']);
         
-        if isempty(procL)
-            % get process number (olympus position ID) from folder name
-            dird=[maindir, alldir(posi).name, filesep, 'stack1']; %get dir of image
-            procnr = str2double(extract(alldir(posi).name, digitsPattern));
-        else
-            procnr = procL(curpos);
-            dird=[maindir, filesep, '_Process_', num2str(procnr), '_', filesep, 'stack1']; %get dir of image
-        end
 
         % get maxframe
         maxfr = meta.MaxFr(metai);
+
+        
     
         % get rotation angle
         rotangle = meta.rotangle(metai);
         % get deltaT
-        dt = meta.dt(metai);
+        deltaT = meta.deltaT(metai);
         
         %init VideoWriter
         cd(savedir)
@@ -164,6 +182,7 @@ for repi = 1:length(allrep)
         r = bfGetReader([dird, filesep, 'frame_t_0.ets']);
         r = loci.formats.Memoizer(r);
         loci.common.DebugTools.setRootLevel('DEBUG');
+        
     
         % get info about microscope stage and store it. my older scripts need
         % it in the registration table but writing it to the meta makes
@@ -175,11 +194,39 @@ for repi = 1:length(allrep)
         meta.PxinUmY(metai) = double(omeMeta.getPixelsPhysicalSizeY(0).value(ome.units.UNITS.MICROMETER));
     
         %get the number of images in there
-        if isempty(maxfr) | isnan(maxfr)
-            n_im=r.getImageCount()/n_channel; %auto-calc
+        n_im=r.getImageCount()/n_channel; %auto-calc
+
+        % if there's a 2nd process, meaning we paste together 2 experiments
+        % because the microscope crashed in the middle of an experiment...
+        if ~isnan(meta.Process2(metai))
+            [parentDir, ~, ~] = fileparts(maindir);
+            dird2=fullfile(parentDir, char(meta.replicate2(metai)),  ['_Process_', num2str(meta.Process2(metai)), '_'], 'stack1'); %get dir of image
+            clear r2
+            r2 = bfGetReader(fullfile(dird2, 'frame_t_0.ets'));
+            r2 = loci.formats.Memoizer(r2);
+            loci.common.DebugTools.setRootLevel('DEBUG');
+
+            firstprocess = n_im;
+
+            if ~isnan(meta.MaxFr(metai))
+                secondprocess = meta.MaxFr(metai);
+            else
+                secondprocess = r2.getImageCount()/n_channel;
+            end
+            n_im = n_im + secondprocess;
+            twoprocess = true;
         else
-            n_im=maxfr;
+            twoprocess = false;
+                    %get the number of images in there
+            if isempty(maxfr) || isnan(maxfr)
+                n_im=r.getImageCount()/n_channel; %auto-calc
+            else
+                n_im=maxfr;
+            end
         end
+
+
+        
     
         % Initialize empty registration table with specified variable names and types
         Tregistration = table(...
@@ -194,6 +241,8 @@ for repi = 1:length(allrep)
         regfailcount = 0; %init
         clf('reset')
         ti=1; %start at t=1
+        updatedreader = false;
+        resetcounter = 0;
         for tind=1:n_im
             ti=tind;
 
@@ -202,14 +251,22 @@ for repi = 1:length(allrep)
             gfp = [];
             rfp = [];
             
-            % Calculate base index for the current time point
-            baseIndex = (ti - 1) * n_channel;
+            if twoprocess && ti>firstprocess && ~updatedreader
+                clear r
+                r = r2;
+                updatedreader = true;
+                resetcounter = ti-1;
+                meta.rep2firstframe(metai) = ti;
+                meta.rep2delaymin(metai) = meta.rep2startdifferencemin(metai)-((ti-1)*meta.deltaT(metai));
+            end
+            
+                % Calculate base index for the current time point
+                baseIndex = (ti - 1 - resetcounter) * n_channel;
             if n_channel == 1
                 % For single-channel data, only process the BF channel
                 bi = ti; % Brightfield index is directly based on time index
-                bf = mat2gray(bfGetPlane(r, bi), thr1);
+                bf = imrotate(mat2gray(bfGetPlane(r, bi), thr1), rotangle);
                 % Rotate image if needed
-                bf = imrotate(bf, rotangle);
                 % GFP and RFP channels are not applicable, so create empty arrays
                 gfp = zeros(size(bf));
                 rfp = zeros(size(bf));
@@ -219,18 +276,14 @@ for repi = 1:length(allrep)
                 gi = baseIndex + 2; % GFP channel index
                 
                 % Load and process Brightfield and GFP channels
-                bf = mat2gray(bfGetPlane(r, bi), thr1);
-                gfp = mat2gray(bfGetPlane(r, gi), thr2);
+                bf = imrotate(mat2gray(bfGetPlane(r, bi), thr1), rotangle);
+                gfp = imrotate(mat2gray(bfGetPlane(r, gi), thr2), rotangle);
                 
-                % Rotate images if needed
-                bf = imrotate(bf, rotangle);
-                gfp = imrotate(gfp, rotangle);
-                
+ 
                 if n_channel > 2
                     % If there is an RFP channel, process it
                     ri = baseIndex + 3; % RFP channel index
-                    rfp = mat2gray(bfGetPlane(r, ri), thr3);
-                    rfp = imrotate(rfp, rotangle);
+                    rfp = imrotate(mat2gray(bfGetPlane(r, ri), thr3), rotangle);
                 else
                     % If no RFP channel, create an empty array
                     rfp = zeros(size(bf));
@@ -239,6 +292,9 @@ for repi = 1:length(allrep)
            
         
             if ti==1 %if it is the first, use this as the alignement reference
+                if posi==49
+                    stp=1;
+                end
                 tform = affine2d(); %reset registration
                 bfO=bf; %save the first image
                 szfix=imref2d(size(bfO)); %get reference coordinates
@@ -267,9 +323,19 @@ for repi = 1:length(allrep)
                 fix3 = imclose(fix3, strel('disk',10));
                 
                 % crop some of the border away
-                crpam = ceil(0.06*size(fix3,1));
+                
+                distance_to_90 = angleDistance(rotangle);
+                if distance_to_90>0.01 % if there was some rotation applied, crop away some X-border as well to not include black area
+                    regcropfact = (1.5*distance_to_90)/100;
+                else
+                    regcropfact = 0.06;
+                end
+                crpam = ceil(regcropfact*size(fix3,1));
                 fix3 = fix3(crpam:size(fix3,1)-crpam,crpam:size(fix3,1)-crpam);
                 fix3or = fix3;
+                bfOblurcheck = imresize(bfO,downsampleF); %resize
+                bfOblurcheck = bfOblurcheck(crpam:size(bfOblurcheck,1)-crpam,...
+                    crpam:size(bfOblurcheck,1)-crpam);
            
 %                   Step 3: Find position of chambers
                 colsum = sum(chambs,1); % figure;plot(colsum)
@@ -280,10 +346,10 @@ for repi = 1:length(allrep)
                 % black regions
                 if mod(rotangle, 90)>0
                     reducerange = floor(size(chambs,1)*0.05);
-                    colsum(1:reducerange) = 0;
-                    colsum(end-reducerange:end) = 0;
-                    rowsum(1:reducerange) = 0;
-                    rowsum(end-reducerange:end) = 0;
+                    colsum(1:reducerange) = nan;
+                    colsum(end-reducerange:end) = nan;
+                    rowsum(1:reducerange) = nan;
+                    rowsum(end-reducerange:end) = nan;
                 end
                 
                 % find peaks in intensity along both axes. They mark
@@ -292,16 +358,55 @@ for repi = 1:length(allrep)
                 % far as expected (hardcoded. bad.)
                 [pks, chamx] = findpeaks(colsum, 'SortStr', 'descend', 'MinPeakProminence', 1, 'MinPeakDistance', 80);
                 [~, idx] = sort(abs(chamx - length(colsum)/2));
-                chamx = sort(chamx(idx(1:2)));
-                [pks, chamy] = findpeaks(rowsum, 'SortStr', 'descend', 'MinPeakProminence', 1, 'MinPeakDistance', 200);
+                [chamx, idx] = sort(chamx(idx(1:2)));
+                pks = pks(idx(1:2));
+                if chamx(2) - chamx(1)>140
+                    [~, idx] = max(pks);
+                    if idx == 1
+                        chamx(2) = chamx(1) + 115;
+                    else
+                        chamx(1) = chamx(2) - 115;
+                    end
+                end
+                [pks, chamy] = findpeaks(rowsum, 'SortStr', 'descend', 'MinPeakProminence', 20, 'MinPeakDistance', 200);
+                if length(chamy) == 0
+                    [pks, chamy] = findpeaks(rowsum, 'SortStr', 'descend', 'MinPeakProminence', 5, 'MinPeakDistance', 200);
+                end
                 
                 % if only one peak has been found on y axis, we likely
                 % have a single control chamber. If we reduce the
                 % minimal peak distance, we probably find it
                 if length(chamy) == 1
-                   potsingle = 1;
-                   [pks, chamy] = findpeaks(rowsum, 'SortStr', 'descend', 'MinPeakProminence', 1, 'MinPeakDistance', 100);
-                   chamsz = 110;
+                   if strcmp(meta.Btype(metai), 'bar') || strcmp(meta.Btype(metai), 'wall')
+                       potsingle = 0;
+                        chamsz = 220;
+                        if mod(rotangle, 90)>0
+                            rowsum(1:reducerange) = 0;
+                            rowsum(end-reducerange:end) = 0;
+                        end
+                        [pks, chamy] = findpeaks(rowsum, 'SortStr', 'descend', 'MinPeakProminence', 20, 'MinPeakDistance', 200);
+                        if length(chamy) == 1
+                            if chamy < length(rowsum)/2
+                               chamy(2) = chamy+chamsz+35;
+                           else
+                               chamy(2) = chamy-chamsz-35;
+                            end
+                        end                       
+                   else
+                       potsingle = 1;
+                       [pks, chamy] = findpeaks(rowsum, 'SortStr', 'descend', 'MinPeakProminence', 1, 'MinPeakDistance', 100);
+                       chamsz = 110;
+                       if length(chamy) == 1
+                           if length(rowsum) - chamy > length(rowsum)/2
+                               chamy = chamy-5;
+                               chamy(2) = chamy - chamsz;
+                           else
+                               chamy = chamy+5;
+                               chamy(2) = chamy + chamsz;
+                           end
+                       end
+                   end
+                   
                 else
                     potsingle = 0;
                     chamsz = 220;
@@ -313,8 +418,9 @@ for repi = 1:length(allrep)
                     if diff(abs(chamy(idx(2:3)) - length(rowsum)/2)) < 20
                         [~, idx] = sort(pks, 'descend');
                     end
+                    chamy = sort(chamy(idx(1:2)));
                 end
-                chamy = sort(chamy(idx(1:2)));
+                
                 
                 % check how far the distance betweens peaks is off 
                 % from the expected distance
@@ -322,18 +428,18 @@ for repi = 1:length(allrep)
                 chamyd = chamy(2) -chamy(1);
                 chamydoff = chamyd - chamsz;
                 if potsingle
-                    if mean(chamy)<size(chambs,2)/2
+                    if strcmp(meta.Btype(metai), 'right')
                         chamy(2) = chamy(2) - abs(chamydoff);
                     else
                         chamy(1) = chamy(1) + abs(chamydoff);
                     end
                 else
                     if chamydoff > 0
-                       chamy(1) = chamy(1) + chamydoff/2;
-                       chamy(2) = chamy(2) - chamydoff/2;
+                       chamy(1) = floor(chamy(1) + chamydoff/2);
+                       chamy(2) = ceil(chamy(2) - chamydoff/2);
                     elseif chamydoff < 0
-                       chamy(1) = chamy(1) - abs(chamydoff)/2;
-                       chamy(2) = chamy(2) + abs(chamydoff)/2;                     
+                       chamy(1) = floor(chamy(1) - abs(chamydoff)/2);
+                       chamy(2) = ceil(chamy(2) + abs(chamydoff)/2);                     
                     end
                 end
               
@@ -345,23 +451,39 @@ for repi = 1:length(allrep)
                 % barrier position.
                 chamboxnar = chambox;
                 narrowing = 22;
-                chamboxnar(2) = chamboxnar(2) +narrowing;
+                chamboxnar(2) = chamboxnar(2) +narrowing/2;
                 chamboxnar(4) = chamboxnar(4) -narrowing;
-                crpim = imcrop(chambs, chamboxnar);
-                rowsum = -sum(crpim,2);
-                [pks, chamy] = findpeaks(rowsum, 'SortStr', 'descend', 'MinPeakProminence', 1);
+                crpim = imcomplement(imcrop(chambs, chamboxnar));
+                rowsum = sum(crpim,2);
+                [pks, chamy] = findpeaks(rowsum, 'SortStr', 'descend', 'MinPeakProminence', 3, 'MinPeakDistance', 50);
                 if potsingle
-                    potsingle = 1;
                     barrierpos = nan;
                 else
-                    % [~, idx] = sort(abs(chamy - length(rowsum)/2));
-                    % chamy = sort(chamy(idx(1:2)));
-                    barrierpos = chamy(1)+narrowing;
+                    if length(chamy)>1
+                        midpoint = chamboxnar(4)/2;
+                        disttomid = abs(chamy-midpoint);
+                        [minval, selpk] = min(disttomid);
+                        if minval < 0.075*chamboxnar(4)
+                            barrierpos = chamy(selpk)+narrowing/2;
+                        else
+                            barrierpos = midpoint+narrowing/2;
+                        end
+                    elseif  isempty(chamy)
+                        barrierpos = chamboxnar(4)/2+narrowing/2;
+                    else
+                        midpoint = chamboxnar(4)/2;
+                        disttomid = abs(chamy-midpoint);
+                        if disttomid>20
+                            barrierpos = midpoint+narrowing/2;
+                        else
+                            barrierpos = chamy+narrowing/2;
+                        end
+                    end
                 end
                 
                     %     this is a diagnostic plot I sometimes use
 %                     figure;
-%                     imshow(chambs);
+%                     imshow(imresize(bfO,downsampleF));
 % %                     imshow(B);
 % %                     imshow(chambs);
 %                     hold on;
@@ -369,6 +491,7 @@ for repi = 1:length(allrep)
 %                         thisBB = chambox(k,:); % Or allBB(k, :)
 %                         rectangle('Position',  thisBB, 'EdgeColor', 'r', 'LineWidth', 1);
 %                     end
+%                     line([1,size(chambs,1)],[chambox(2)+barrierpos,chambox(2)+barrierpos])
 %                     hold off;
 %                     
 
@@ -411,7 +534,7 @@ for repi = 1:length(allrep)
                 meta(metai,:) = currow;
                 try
                     writetable(meta,...
-                    [masterdir, filesep, 'meta_processing.csv'],...
+                    metaname,...
                     'Delimiter', ',');
                 catch
                     writetable(meta,...
@@ -423,6 +546,10 @@ for repi = 1:length(allrep)
 
                     
             else %all other images are aligned to the 1st image 
+                if ti==45
+                    stp=1;
+                end
+                
                 chambs=imresize(bf,downsampleF); %resize
                 chambs = imreducehaze(chambs); %reduce haze
                 chambs = mat2gray(colfilt(chambs,[5 5],'sliding',@max)); %blur2
@@ -432,11 +559,19 @@ for repi = 1:length(allrep)
                 mov3 = mov3(crpam:size(mov3,1)-crpam,crpam:size(mov3,1)-crpam);
 
                 % check OOF
-                blurval = blur(imresize(bfO,0.1), imresize(bf,0.1));
+                OOFcheck = 0;
+                if OOFcheck
+                bfblurcheck = imresize(bf,downsampleF); %resize
+                bfblurcheck = bfblurcheck(crpam:size(bfblurcheck,1)-crpam,...
+                    crpam:size(bfblurcheck,1)-crpam);
+                blurval = blur(bfOblurcheck, bfblurcheck);
                 if blurval>OOFcutoff
                     OOF = 1;
                     regfail = 1;
                     disp(['Frame out of focus. Blur-value: ', num2str(blurval)])
+                else
+                    OOF = 0;
+                end
                 else
                     OOF = 0;
                 end
@@ -445,33 +580,83 @@ for repi = 1:length(allrep)
                 % works already
                 % Scale transformation according to downsampling factor
                 tform.T(3,1:2) = tform.T(3,1:2) * downsampleF;
-                for trial=1:3
-                    if OOF; continue; end
+                scf=1; %scale starting condition by that much
+                regfail = 1; %reset
+                for trial=1:6
+                    if OOF; break; end
                     % Perform image registration
+                    if trial == 1
+                        tformpreraw = tform;
+                        ceilfix = @(x)ceil(abs(x)).*sign(x);
+                        tformpre.T = ceilfix(tform.T);
+                        fix3ct = fix3;
+                        if tformpre.T(3,1)>0 %x movement
+                            shiftxpos = true;
+                            fix3ct = imcrop(fix3ct, [tformpre.T(3,1)+1, 1, size(fix3ct, 2)-tformpre.T(3,1), size(fix3ct,1)]);
+                        elseif tformpre.T(3,1)<0 %x movement
+                            shiftxpos = false;
+                            fix3ct = imcrop(fix3ct, [1, 1, size(fix3ct, 2)+tformpre.T(3,1), size(fix3ct,1)]);
+                        end
+                        if tformpre.T(3,2)>0 %y movement
+                            shiftypos = true;
+                            fix3ct = imcrop(fix3ct, [1, tformpre.T(3,2)+1, size(fix3ct, 2), size(fix3ct, 1)-tformpre.T(3,2)]);
+                        elseif tformpre.T(3,2)<0 %y movement
+                            shiftypos = false;
+                            fix3ct = imcrop(fix3ct, [1, 1, size(fix3ct, 2), size(fix3ct, 1)+tformpre.T(3,2)]);
+                        end
+                    end
+                    
                     tform = imregtform(mov3,...
-                        fix3,'translation',optimizer,metric,...
+                        fix3ct,'translation',optimizer,metric,...
                         'InitialTransformation', tform);
+
+                    
                     %warp to fit first image
-                    mov3mv=imwarp(mov3, tform, 'OutputView', imref2d(size(fix3)));
+                    mov3mvnoadj=imwarp(mov3, tform, 'OutputView', imref2d(size(fix3ct)));
+%                     figure; imshow(fix3ct);figure;imshow(mov3mvnoadj)
+
+                    if tformpreraw.T(3,1)>0
+                        tform.T(3,1) = tform.T(3,1) + tformpre.T(3,1);
+                    elseif tformpreraw.T(3,1)<0
+%                         tform.T(3,1) = tform.T(3,1) - tformpre.T(3,1);
+%                         tform.T(3,1) = tform.T(3,1) - (tformpreraw.T(3,1)-tformpre.T(3,1));
+                    end
+                    if tformpreraw.T(3,2)>0
+                        tform.T(3,2) = tform.T(3,2) + tformpre.T(3,2);
+                    elseif tformpreraw.T(3,2)<0
+%                         tform.T(3,2) = tform.T(3,2) - tformpre.T(3,2);
+%                         tform.T(3,2) = tform.T(3,2) - (tformpreraw.T(3,2)-tformpre.T(3,2));
+                    end
+                    %warp to fit first image
+                    mov3mv=imwarp(mov3, tform, 'OutputView', imref2d(size(fix3ct))); %figure;imshow(fix3ct);figure;imshow(mov3mv);
 
                     %now, iterate over different starting conditions (regarding x and y) for
                     %registration until a good one is found. That was the
                     %only way I could think of to manage a consistently good
                     %registration
 
+                    largemove = 0;
+                    if ti>20 && ~isnan(meta.limitregmov(metai))
+                        if abs(tform.T(3,1) - mean(Tregistration.x_reg(end-5:end))*downsampleF) / downsampleF > meta.limitregmov(metai)
+                            largemove = 1;
+                        end
+                        if abs(tform.T(3,2) - mean(Tregistration.y_reg(end-5:end))*downsampleF) / downsampleF > meta.limitregmov(metai)
+                            largemove = 1;
+                        end
+                    end
                     %do the iteration if crosscorrelation between the first
                     %image and the registration image is below 0.5
                     %(chosen based on my humble experience...)
                     xOffset = ceil(tform.T(3,1));
                     yOffset = ceil(tform.T(3,2));
-                    xRange = max(1, 1+xOffset) : size(fix3,2)+min(0, xOffset-1);
-                    yRange = max(1, 1+yOffset) : size(fix3,1)+min(0, yOffset-1);
+                    xRange = max(1, 1+xOffset) : size(fix3ct,2)+min(0, xOffset-1);
+                    yRange = max(1, 1+yOffset) : size(fix3ct,1)+min(0, yOffset-1);
                     % Extract regions for correlation check
-                    fix3check = fix3(yRange, xRange);
-                    mov3check = mov3mv(yRange, xRange);
+                    fix3check = fix3ct(yRange, xRange);
+                    mov3check = mov3mvnoadj(yRange, xRange);
                     % Calculate check regions based on transformation
                     correlation = abs(corr2(fix3check, mov3check));
-                    if correlation < 0.5 || isnan(correlation)
+                    if largemove || (correlation < 0.5 || isnan(correlation))
 
                         % Reset registration if previous values are not NaN
                         if ~isnan(Tregistration.x_reg(end-regfailcount))
@@ -482,12 +667,24 @@ for repi = 1:length(allrep)
                         end
                         % Adjust fixed image or set failure flag based on trial number
                         switch trial
-                            case 1
-                                fix3 = fix3prev2;
+                            case 1 %chks indicate which option to try
+                                tform.T(3,1) = tform.T(3,1)-25*scf;
+%                                 tform.T(3,2) = tform.T(3,2);
                             case 2
-                                fix3 = fix3or;
+                                tform.T(3,1) = tform.T(3,1)+25*scf;
+%                                 tform.T(3,2) = tform.T(3,2);
                             case 3
-                                regfail = 1;
+                                tform.T(3,1) = tform.T(3,1)-25*scf;
+                                tform.T(3,2) = tform.T(3,2)-10;
+                            case 4
+                                tform.T(3,1) = tform.T(3,1);
+                                tform.T(3,2) = tform.T(3,2)-10;
+                            case 5
+                                tform.T(3,1) = tform.T(3,1)+25*scf;
+                                tform.T(3,2) = tform.T(3,2)-10;
+                            case 6
+                                tform.T(3,1) = tform.T(3,1)+25*scf;
+                                tform.T(3,2) = tform.T(3,2)+10;
                         end
                     else
                         % Successful registration, exit loop
@@ -503,7 +700,7 @@ for repi = 1:length(allrep)
                 if ~regfail
                     fix3prev2 = fix3prev;
                     fix3prev = fix3;
-                    fix3 = mov3mv;
+                    fix3 = imwarp(mov3, tform, 'OutputView', imref2d(size(fix3)));
                     % Scale transformation according to downsampling factor
                     tform.T(3,1:2) = tform.T(3,1:2) * (1/downsampleF);
                     % apply registration to BF, GFP and RFP
@@ -640,7 +837,10 @@ for repi = 1:length(allrep)
                      'AnchorPoint', 'CenterTop', 'BoxOpacity', 0));
             
                 %create time string to burn into image for movie
-                time1=(ti-1)*dt;
+                time1=(ti-1)*deltaT;
+                if twoprocess && updatedreader
+                    time1 = time1+meta.rep2delaymin(metai);
+                end
                 tH=floor(time1/60);
                 tM=time1-tH*60;
                 if tH<10
@@ -656,11 +856,13 @@ for repi = 1:length(allrep)
                 tstring=[tH, ':',tM];
                 ov = insertText(ov, [00, 00], tstring, 'FontSize', 80, 'BoxColor', tcol);
 
-                linepos = [meta.chamberbox1(metai), ...
-                    meta.chamberbox2(metai) + meta.BarrierYincrop(metai), ...
-                    meta.chamberbox1(metai) + meta.chamberbox3(metai), ...
-                    meta.chamberbox2(metai) + meta.BarrierYincrop(metai)];
-                ov = insertShape(ov,'Line', linepos, 'Color', bcol, 'LineWidth', 10);
+                if ~isnan(meta.BarrierYincrop(metai))
+                    linepos = [meta.chamberbox1(metai), ...
+                        meta.chamberbox2(metai) + meta.BarrierYincrop(metai), ...
+                        meta.chamberbox1(metai) + meta.chamberbox3(metai), ...
+                        meta.chamberbox2(metai) + meta.BarrierYincrop(metai)];
+                    ov = insertShape(ov,'Line', linepos, 'Color', bcol, 'LineWidth', 10);
+                end
 
                 ov = imresize(ov, vidsz);
                 % show it
@@ -691,7 +893,7 @@ for repi = 1:length(allrep)
     meta(metai,:) = currow;
     try
         writetable(meta,...
-        [masterdir, filesep, 'meta_processing.csv'],...
+        metaname,...
         'Delimiter', ',');
     catch
         writetable(meta,...
@@ -752,11 +954,12 @@ function writeImage(channelData, bitDepth, maxInVal, saveDir, posi, chi, ti, cha
 end
 
 function meta = preprocessMetaTable(metaname)
-    % Read and preprocess the metadata table
+    % Read and preProcess the metadata table
     opts = detectImportOptions(metaname);
     % Define columns and their desired types
-    charColumns = {'Exclude', 'Notes', 'register', 'stardist', 'stardist_fails'};
-    doubleColumns = {'MaxFr', 'Process', 'StageX', 'StageY', 'PxinUmX', 'PxinUmY', 'BarrierYincrop', 'chamberbox1', 'chamberbox2', 'chamberbox3', 'chamberbox4'};
+    charColumns = {'Exclude', 'Note', 'register', 'stardist', 'stardist_fails'};
+    doubleColumns = {'MaxFr', 'Process','Process2','rep2firstframe','rep2startdifferencemin', 'rep2delaymin', 'StageX', 'StageY', 'PxinUmX', 'PxinUmY', 'rotangle',...
+        'BarrierYincrop', 'chamberbox1', 'chamberbox2', 'chamberbox3', 'chamberbox4', 'limitregmov'};
     
     % Update VariableTypes for specified columns
     for colName = [charColumns, doubleColumns]
@@ -775,4 +978,12 @@ function disableWarnings()
     warning('off', 'MATLAB:table:RowsAddedExistingVars');
     warning('off', 'images:imfindcircles:warnForSmallRadius');
     warning('off', 'MATLAB:MKDIR:DirectoryExists');
+end
+
+function distance = angleDistance(angle)
+    % Get the remainder when dividing by 90
+    remainder = mod(angle, 90);
+    
+    % Find the minimum distance to the nearest multiple of 90
+    distance = abs(min(remainder, 90 - remainder));
 end

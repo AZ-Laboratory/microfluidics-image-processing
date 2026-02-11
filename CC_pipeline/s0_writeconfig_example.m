@@ -9,18 +9,18 @@ cfg = struct(); % Initialize configuration structure
 
 %% Configuration File Location
 % Define the name and directory for the configuration file.
-mainconfigname = 'jbanalysisconfig_cc';
-configdir = 'D:\GitHub\azimages\julian\CC_pipeline\';
+mainconfigname = 'config_example_cc';
+configdir = 'C://Users/zinke/Documents/GitHub/microfluidics-image-processing/CC_pipeline/';
 
 %% General Configuration Values
 % Directory containing image datasets and metadata.
-cfg.masterdir = 'E:\Julian\barrier\sharing\'; % Main image directory
+cfg.masterdir = 'E://Microscopy/Julian/sharing_cc/'; % Main image directory
 
 % Directory name for saving analysis results.
-cfg.savedirname = 'savesV1';
+cfg.savedirname = 'saves';
 
 % Name of the metadata CSV file.
-cfg.metacsv = 'meta_processing.csv';
+cfg.metacsv = 'cc_example_meta_processing.csv';
 
 % Number of imaging channels (e.g., 1 for phase contrast, 2+ for fluorescence).
 cfg.n_channel = 2;
@@ -41,11 +41,11 @@ cfg.downsampleF_chamberdetect = 0.15;
 
 % Intensity scaling thresholds for each channel.
 cfg.thr1 = [0, 0.9]; % For 1st channel (e.g., phase contrast)
-cfg.thr2 = [0.002, 0.85]; % For 2nd channel (1st fluorescence channel)
+cfg.thr2 = [0.002, 0.9]; % For 2nd channel (1st fluorescence channel)
 cfg.thr3 = [0.002, 0.1]; % For 3rd channel (2nd fluorescence channel)
 
 %% Image Quality and Chamber Detection Parameters
-cfg.OOFcutoff = 4; % Out-of-focus cutoff value for frame rejection
+cfg.OOFcutoff = 8; % Out-of-focus cutoff value for frame rejection
 cfg.chambelong = 12; % Pixel padding for chamber boundary elongation
 cfg.chamw = 8; % Chamber width in pixels after downsampling
 cfg.chamb_binthresh = 0.35; % Binarization threshold for chamber detection
@@ -57,7 +57,7 @@ cfg.chname3 = 'Ch3'; % Name of the 3rd channel
 
 %% Video Creation Parameters
 % Colors for fluorescence channels in the output video.
-cfg.col1 = [0.95, 0.99, 0]; % Color for 1st fluorescence channel
+cfg.col1 = [0, 1.1, 0]; % Color for 1st fluorescence channel
 cfg.col2 = [1, 0, 0]; % Color for 2nd fluorescence channel
 cfg.col3 = [0, 0, 1]; % Color for an additional channel or overlay
 
@@ -72,7 +72,7 @@ cfg.burn_chamb = 1;
 cfg.liveimages = 0.5; % Display scaling factor (0.5 = 50% size)
 
 %% Stardist Parameters for Cell Segmentation
-cfg.stardistmodeldir = 'D://GitHub/azimages/julian/stardist/models/stardist-bar';
+cfg.stardistmodeldir = 'C://Users/zinke/Documents/GitHub/microfluidics-image-processing/stardist_models/cc';
 cfg.flims = true; % Enable fluorescence data extraction and CSV export
 cfg.ramsize = 8000; % Available GPU RAM in MB
 cfg.ramlimit = 0.85; % Max proportion of GPU RAM to use
@@ -89,6 +89,7 @@ if ~endsWith(mainconfigname, '.json')
 end
 fid = fopen(fullfile(configdir, mainconfigname), 'w');
 if fid == -1
+    errordlg(['Config file could not be created. Atempted: ', fullfile(configdir, [mainconfigname, '.json'])]);
     error('Cannot create JSON file');
 end
 fwrite(fid, jsonText, 'char');

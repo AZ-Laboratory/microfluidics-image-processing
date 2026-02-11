@@ -53,7 +53,7 @@ currentScriptPath = fileparts(mfilename('fullpath'));
 helperFunctionsPath = fullfile(currentScriptPath, 'helperfunctions');
 
 % Temporarily add the helper functions folder to the MATLAB path
-addpath(helperFunctionsPath);
+addpath(genpath(helperFunctionsPath));
 
 meta = preprocessMetaTable(metaname);
 

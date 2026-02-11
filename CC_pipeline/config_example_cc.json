@@ -1,7 +1,7 @@
 {
-  "masterdir": "E:\\Julian\\barrier\\sharing\\",
-  "savedirname": "savesV1",
-  "metacsv": "meta_processing.csv",
+  "masterdir": "E://Microscopy/Julian/sharing_cc/",
+  "savedirname": "saves",
+  "metacsv": "cc_example_meta_processing.csv",
   "n_channel": 2,
   "bitdepth": 16,
   "posL": [],
@@ -14,13 +14,13 @@
   ],
   "thr2": [
     0.002,
-    0.85
+    0.9
   ],
   "thr3": [
     0.002,
     0.1
   ],
-  "OOFcutoff": 4,
+  "OOFcutoff": 8,
   "chambelong": 12,
   "chamw": 8,
   "chamb_binthresh": 0.35,
@@ -28,8 +28,8 @@
   "chname2": "Ch2",
   "chname3": "Ch3",
   "col1": [
-    0.95,
-    0.99,
+    0,
+    1.1,
     0
   ],
   "col2": [
@@ -49,7 +49,7 @@
   ],
   "burn_chamb": 1,
   "liveimages": 0.5,
-  "stardistmodeldir": "D://GitHub/azimages/julian/stardist/models/stardist-bar",
+  "stardistmodeldir": "C://Users/zinke/Documents/GitHub/microfluidics-image-processing/stardist_models/cc",
   "flims": true,
   "ramsize": 8000,
   "ramlimit": 0.85
