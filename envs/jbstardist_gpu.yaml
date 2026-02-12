@@ -1,0 +1,27 @@
+name: jbstardist_gpu
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - cudatoolkit=11.2.*
+  - cudnn=8.1.*
+  - numpy<1.24
+  - scipy
+  - scikit-image=0.19.*
+  - pandas
+  - h5py
+  - matplotlib-base
+  - seaborn
+  - opencv
+  - ffmpeg-python
+  - dask-image
+  - napari
+  - jupyter
+  - jupyterlab
+  - ipywidgets
+  - pip
+  - pip:
+      - csbdeep
+      - stardist
+      - tensorflow==2.11.*

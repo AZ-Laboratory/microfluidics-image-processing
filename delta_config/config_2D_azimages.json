@@ -5,8 +5,8 @@
     "tracking"
   ],
   "model_file_rois": "",
-  "model_file_seg": "C:\\Users\\zinke\\Documents\\GitHub\\deltamodels\\unet_pads_seg.hdf5",
-  "model_file_track": "C:\\Users\\zinke\\Documents\\GitHub\\deltamodels\\unet_pads_track.hdf5",
+  "model_file_seg": "G:\\GitHub\\deltamodels\\unet_pads_seg.hdf5",
+  "model_file_track": "G:\\GitHub\\deltamodels\\unet_pads_track.hdf5",
   "target_size_rois": [
     256,
     256
@@ -22,7 +22,7 @@
   "training_set_rois": "",
   "training_set_seg": "",
   "training_set_track": "",
-  "eval_movie": "D:\\GitHub\\I2ICourse\\Project2B\\RawData",
+  "eval_movie": "",
   "rotation_correction": false,
   "drift_correction": false,
   "crop_windows": true,

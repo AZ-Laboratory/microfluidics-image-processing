@@ -2,28 +2,30 @@ name: jbdelta
 channels:
   - conda-forge
 dependencies:
-  - scikit-image>=0.18
-  - opencv>=4.1
-  - tensorflow-gpu=2.6.0
-  - ffmpeg-python
-  - requests
-  - python=3.9
-  - cudnn=8 
-  - cudatoolkit=11
-  - h5py
-  - ipykernel
+  - python=3.10
+  - numpy
   - scipy
-  - matplotlib
-  - numpy=1.22.3
-  - seaborn
-  - napari
-  - pandas
-  - qt
   - scikit-image
   - scikit-learn
+  - opencv
+  - h5py
+  - matplotlib
+  - seaborn
+  - pandas
+  - tifffile
+  - pywavelets
+  - networkx
+  - imageio
+  - pillow
+  - dask
   - dask-image
-  - pathlib
-  - pip
+  - ffmpeg-python
+  - requests
+  - tqdm
   - jupyterlab
+  - ipykernel
+  - ipywidgets
+  - pip
   - pip:
-    - elasticdeform
+      - tensorflow==2.15.0
+      - elasticdeform

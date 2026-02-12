@@ -10,11 +10,11 @@ cfg = struct(); % Initialize configuration structure
 %% Configuration File Location
 % Define the name and directory for the configuration file.
 mainconfigname = 'config_example_matched';
-configdir = 'C://Users/zinke/Documents/GitHub/microfluidics-image-processing/MM_pipeline';
+configdir = 'G://GitHub/microfluidics-image-processing/MM_pipeline';
 
 %% General Configuration Values
-% Directory containing image datasets and metadata.
-cfg.masterdir = 'D://Julian/agr_rev_matched/sharing/matched'; %main directory of images (contains subfolders typedirs)
+% Directory containing image datasets and metadata.z
+cfg.masterdir = 'I://Julian/agr_rev_matched/sharing/matched'; %main directory of images (contains subfolders typedirs)
 
 % Directory name for saving analysis results.
 cfg.savedirname = 'saves';
@@ -103,17 +103,17 @@ cfg.burn_chamb = 1;
 cfg.liveimages = 0.5; % Display scaling factor (0.5 = 50% size)
 
 %% Stardist Parameters for Cell Segmentation
-cfg.stardistmodeldir = 'C://Users/zinke/Documents/GitHub/microfluidics-image-processing/stardist_models/mm';
+cfg.stardistmodeldir = 'G://GitHub/microfluidics-image-processing/stardist_models/mm';
 cfg.ramsize = 8000; % Available GPU RAM in MB
 cfg.ramlimit = 0.85; % Max proportion of GPU RAM to use
 
 %% DeLTA parameters
 
 % modified local delta package path
-cfg.deltapath = 'C://Users/zinke/Documents/GitHub/microfluidics-image-processing/delta_vjb/delta';
+cfg.deltapath = 'G://GitHub/microfluidics-image-processing/delta_vjb/delta';
 
 % delta config path and name
-cfg.configpath = 'C://Users/zinke/Documents/GitHub/microfluidics-image-processing/delta_config/';
+cfg.configpath = 'G://GitHub/microfluidics-image-processing/delta_config/';
 cfg.configname = 'config_2D_azimages.json';
 
 % name of folder in which to store delta data (created in each position

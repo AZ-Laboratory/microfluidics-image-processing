@@ -1,5 +1,5 @@
 {
-  "masterdir": "D://Julian/agr_rev_matched/sharing/matched",
+  "masterdir": "I://Julian/agr_rev_matched/sharing/matched",
   "savedirname": "saves",
   "metacsv": "shared_matched_meta_processing.csv",
   "typedirs": [
@@ -59,11 +59,11 @@
   ],
   "burn_chamb": 1,
   "liveimages": 0.5,
-  "stardistmodeldir": "C://Users/zinke/Documents/GitHub/microfluidics-image-processing/stardist_models/mm",
+  "stardistmodeldir": "G://GitHub/microfluidics-image-processing/stardist_models/mm",
   "ramsize": 8000,
   "ramlimit": 0.85,
-  "deltapath": "C://Users/zinke/Documents/GitHub/microfluidics-image-processing/delta_vjb/delta",
-  "configpath": "C://Users/zinke/Documents/GitHub/microfluidics-image-processing/delta_config/",
+  "deltapath": "G://GitHub/microfluidics-image-processing/delta_vjb/delta",
+  "configpath": "G://GitHub/microfluidics-image-processing/delta_config/",
   "configname": "config_2D_azimages.json",
   "deltasavename": "deltadata",
   "imageprototype": "Chamb%02d/Chamb%02dCh%01dFr%03d.tif",
