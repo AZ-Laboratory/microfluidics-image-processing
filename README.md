@@ -24,7 +24,7 @@ The repository provides analysis pipelines for both mother-machine (mm) and conn
 - I use a local copy of DeLTA 2.0 as I did some minor mods (no cell pole detection, just use center. Disable all user messages and some minor bug fixes for my type of images including a custom weights function for tracking training). I need to check all my changes and see how I can merge them into the official branch. For the moment, my DeLTA version is included in this github repo (`.../delta_vjb`) and is attached to the sys path at the start of the script to be able to access functions in it.
 
 ### Example data
-Raw example images to test the pipeline including meta data in the correct format and the output of the fully run pipeline are deposited on the [BioImages Archive](https://www.ebi.ac.uk/biostudies/bioimages/studies/S-BIAD1046).
+Raw example images to test the pipeline including meta data in the correct format and the output of the fully run pipeline are deposited on the [BioImages Archive](https://www.ebi.ac.uk/biostudies/bioimages/studies/S-BIAD1046) with accession number S-BIAD1046. There will be additional example data released soon that contain images for an additional set of bacterial strains. The current BioImage Repo S-BIAD1046 contains data as it was in the preprint linked above. The metadata structure has slightly changed since then. You may need to update the included metadata tables with missing columns as listed below.
 
 
 ## mother-machine (mm) image analysis pipeline
@@ -42,18 +42,10 @@ Columns of meta file:
 - `replicate2` and `Process2`: (mandatory) our microscope had some problems and crashed sometimes early after acquisition start but restart was usually possible. However, the restart is saved in a new folder with new Process numbers. These two columns are needed for assigning the matching two Processes. Leave empty if not needed.
 - `rep2startdifferencemin` and `rep2firstframe` and `rep2delaymin`: (mandatory) these are needed for the cases when replicate2 is not empty. rep2startdifferencemin is the only one needed to fill by the user, the other two are filled by the script. rep2startdifferencemin is the time difference in minutes between acquisition start of replicate and start of replicate2. It is used to calculate the missed imaging time due to acquisition restart.
 - `dt`: (mandatory) framerate (min between frames)
-- `strain`: (optional) bacterial strain name
-- `aip_nM`: (optional) synthetic AIP concentration provided
-- `Note`: (optional) whatever arbitrary and unstructured note you want to put down
 - `firstframe`: (mandatory) sometimes, the first frame was out of focus. This can be used to indicate if analysis should use a later frame as reference for registration and filled chamber detection. Leave empty if first frame should be used.
 - `MaxFr`: (mandatory) frames after MaxFr are ignored. Leave empty if all frames should be used
 - `Exclude`: (mandatory) If == "excl" the entire position will be skipped. If =="top", chambers in the top channel will be excluded. (we use chips that split into a top and bottom flow channel with chambers on both sides of each of those). This means, if the very top row was imaged, the entire position will be excluded and if a middle section was imaged, only the top row will be excluded (FOV has chambers both from top and bottom flow channel). Reverse is performed if =="bot".
 - `prerotate`: (mandatory) specify the rotation to align chambers in a nice 90° angle. Either manually fill it, use the auxillary rotation script to set it or leave empty for automatic rotation detection.
-- `type`: (optional) Type of experiment. For the original: sAIP = synthetic homologous AIP. mAIP: mixed homologous and heterologous AIP. short: quick framerate needed for successful DeLTA tracking
-- `aip_type`: (optional) This indicated the type of synthetic AIP used
-- `aip_addfr` and `aip_remfr`: (optional) These two indicate the additional and removal of synthetic AIP to growth media in frames. If a replicate2 was started, the aip_remfr is assumed to be for that replicate2 subprocess
-- `plasmid`: (optional) Which reporter plasmid does the strain carry
-- `media`: (optional) Which growth media was used
 - `maindir`: (mandatory) original folder name of the processed images. Filled by script
 - `nchamber`: (mandatory) number of chambers used for this position. Filled by script
 - `MiddleRow`: (mandatory) Our MM chips split into two channels, therefore we can image either the top or bottow side of the channel (1 row of chambers visible) or the middle portion in which we can see double the number of chambers in one FOV. The script automatically detects which type of FOV we have and assigns =1 if this is a middle row. Filled by script
@@ -68,6 +60,30 @@ Columns of meta file:
 - `stardist_fails`: (mandatory) reports any error messages occuring during te run of the StarDist script. Filled by script
 - `delta`: (mandatory) Turns to "Done" once the 3) DeLTA script has been run. Filled by script
 - `delta_fails`: (mandatory) reports any error messages occuring during te run of the DeLTA script. Filled by script
+
+Below is a description of the metadata columns part of the example data found on the BioImage Archive.
+For homologous AIP exposure:
+- `strain`: (optional) bacterial strain name
+- `aip_nM`: (optional) synthetic AIP concentration provided
+- `Note`: (optional) whatever arbitrary and unstructured note you want to put down
+- `type`: (optional) Type of experiment. For the original: sAIP = synthetic homologous AIP. mAIP: mixed homologous and heterologous AIP. short: quick framerate needed for successful DeLTA tracking
+- `aip_type`: (optional) This indicated the type of synthetic AIP used
+- `aip_addfr` and `aip_remfr`: (optional) These two indicate the additional and removal of synthetic AIP to growth media in frames. If a replicate2 was started, the aip_remfr is assumed to be for that replicate2 subprocess
+- `plasmid`: (optional) Which reporter plasmid does the strain carry
+- `media`: (optional) Which growth media was used
+
+For heterologous AIP exposure:
+- `tfr1`, `tfr2` and `tfr3`: (optional) indicate time of growth media switches (AIP condition changes) in frames
+- `strain`: (optional) bacterial strain name
+- `c0_nM`: (optional) synthetic AIP concentration provided before tfr1. Always 0n
+- `type1`: (optional) synthetic homologous AIP type provided between tfr1 and tfr2
+- `c1_match_nM`: (optional) synthetic homologous AIP concentration of type1 provided between tfr1 and tfr2
+- `c2_match_nM`: (optional) synthetic homologous AIP concentration of type1 provided between tfr2 and tfr3
+- `type2`: (optional) synthetic heterologous AIP type provided (always as mix with homologous AIP of type1) between tfr2 and tfr3
+- `c2_mismatch_nM`: (optional) synthetic heterologous AIP concentration of type2 provided (always as mix with homologous AIP) between tfr2 and tfr3
+- `type3`: (optional) synthetic homologous AIP type provided after tfr3
+- `c3_match_nM`: (optional) synthetic homologous AIP concentration provided after tfr3
+- `Note`: (optional) whatever arbitrary and unstructured note you want to put down
 
 
 ### 0) Create json config file (s0_writeconfig.m)
@@ -135,23 +151,28 @@ The script uses the config from s0_writeconfig.mat:
 Columns after `Process` will be filled by the script iteratively and should be left empty by the user. The previous ones need/can be filled by the user. The user can add as many more columns as needed to describe their experimental design.
 If there's any weird errors of the MATLAB script regarding wrong format of a column, add a dummy row 1 in which you fill out each cell. Matlab cannot assign strings to numeric table columns and if all is empty, it assigns automatically numeric which then makes it crash if it wants to assign a string...
 Columns of meta file:
-- `replicate`: same format as the folders
-- `pos`: for each replicate starting at 1 up to number of position
-- `TopStrain` & `BotStrain`: bacterial strain name for the top and bottom chambers
-- `type`, `media`, `flow`, `Btype`: User variables.
-- `MaxFr`: frames after MaxFr are ignored
-- `Exclude`: If == "excl" the entire position will be skipped
-- `Notes`: whatever arbitrary and unstructured note you want to put down
+- `date`: (optional), date of experiment
+- `replicate`: (mandatory) this is used to find the correct folder, details below
+- `chip`: (mandatory) we often imaging two 6-channel mother-machine chips in one experiment. This is as identifier for either c1 or c2.
+- `pos`: (mandatory) for each replicate starting at 1 up to number of position
 - `Process`: numeric Process name (Olympus CellSense position ID, only the digits without 'Process' and the underscores). To avoid any mistakes due to weird sorting and naming by CellSense, I suggest filling that manually. The script will then use this number to open an image and will not assume any kind of sorting. If it is left empty, the field is filled by script based on natural sorting
-- `rotangle`: either manually fill in the rotation angle or use the `s1_rotation.m` script to write it into the meta file
-- `StageX`: X position of stage. Filled by script
-- `StageY`: Y position of stage. Filled by script
-- `PxinUmX`: spatial calibration factor. Filled by script
-- `PxinUmY`: spatial calibration factor (should always be the same as the one above, I guess). Filled by script
-- `chamberbox1` to `chamberbox4` give the position of the detected bounding box of the connected chamber in the format x_start, y_start, width, height
-- `register`: Turns to "Done" once the `s2_chamgerdetect.m` has been run. Filled by script
-- `stardist`: Turns to "Done" once the StarDist script has been run. Filled by script
-- `stardist_fails`: reports any error messages occuring during te run of the StarDist script. Filled by script
+- `replicate2` and `Process2`: (mandatory) our microscope had some problems and crashed sometimes early after acquisition start but restart was usually possible. However, the restart is saved in a new folder with new Process numbers. These two columns are needed for assigning the matching two Processes. Leave empty if not needed.
+- `rep2startdifferencemin` and `rep2firstframe` and `rep2delaymin`: (mandatory) these are needed for the cases when replicate2 is not empty. rep2startdifferencemin is the only one needed to fill by the user, the other two are filled by the script. rep2startdifferencemin is the time difference in minutes between acquisition start of replicate and start of replicate2. It is used to calculate the missed imaging time due to acquisition restart.
+- `dt`: (mandatory) framerate (min between frames)
+- `LeftStrain` & `RightStrain`: (optional) bacterial strain name for the left and right chambers. Rotated then by 90degrees, so Left becomes Top and Right Bottom
+- `type`, `media`, `flow`, `Btype`: (optional) User variables describing type of chamber (All Comp for normal competition chambers here), media for growth media used, flow for flowrate in ml/h and Btype for indicating BarrierType (all bar for normal barrier here)
+- `MaxFr`: (mandatory) frames after MaxFr are ignored
+- `Exclude`: (mandatory) If == "excl" the entire position will be skipped
+- `Notes`: whatever arbitrary and unstructured note you want to put down
+- `rotangle`: (mandatory) either manually fill in the rotation angle or use the `s1_rotation.m` script to write it into the meta file
+- `StageX`: (mandatory) X position of stage. Filled by script
+- `StageY`: (mandatory) Y position of stage. Filled by script
+- `PxinUmX`: (mandatory) spatial calibration factor. Filled by script
+- `PxinUmY`: (mandatory) spatial calibration factor (should always be the same as the one above, I guess). Filled by script
+- `chamberbox1` to `chamberbox4` (mandatory) give the position of the detected bounding box of the connected chamber in the format x_start, y_start, width, height
+- `register`: (mandatory) Turns to "Done" once the `s2_chamgerdetect.m` has been run. Filled by script
+- `stardist`: (mandatory) Turns to "Done" once the StarDist script has been run. Filled by script
+- `stardist_fails`: (mandatory) reports any error messages occuring during te run of the StarDist script. Filled by script
 
 ### 0) Create json config file (s0_writeconfig.m)
 This is a small MATLAB script to generate a json file containing all variables needed to adapt by the user for the following scripts.
