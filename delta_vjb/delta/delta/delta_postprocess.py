@@ -134,7 +134,6 @@ def add_exra_lin_info(df):
     dflin = df_full.groupby('id_par').agg([min, max]).rename(columns={"min" : "d1", "max" : "d2"})
     dflin.columns = dflin.columns.droplevel()
     dflin = dflin.reset_index()
-    dflin.head()
 
     df["id_d1"] = -1
     df["id_d2"] = -1
@@ -143,16 +142,20 @@ def add_exra_lin_info(df):
     #add offspring to parent
     for mom in np.unique(dflin["id_par"]):
         if mom >= 0:
-            df.loc[df["id_cell"] == mom, "id_d1"] = int(dflin.loc[dflin["id_par"] == mom, "d1"])
-            df.loc[df["id_cell"] == mom, "id_d2"] = int(dflin.loc[dflin["id_par"] == mom, "d2"])
+            df.loc[df["id_cell"] == mom, "id_d1"] = int(dflin.loc[dflin["id_par"] == mom, "d1"].iloc[0])
+            df.loc[df["id_cell"] == mom, "id_d2"] = int(dflin.loc[dflin["id_par"] == mom, "d2"].iloc[0])
     
     #add siblings to d1    
     for cell in np.unique(dflin["d1"]):
-        df.loc[df["id_cell"] == cell, "id_sib"] = int(dflin.loc[dflin["d1"] == cell, "d2"])
+        result = dflin.loc[dflin["d1"] == cell, "d2"]
+        if len(result) > 0:
+            df.loc[df["id_cell"] == cell, "id_sib"] = int(result.iloc[0])
         
     #add siblings to d2    
     for cell in np.unique(dflin["d2"]):
-        df.loc[df["id_cell"] == cell, "id_sib"] = int(dflin.loc[dflin["d2"] == cell, "d1"])
+        result = dflin.loc[dflin["d2"] == cell, "d1"]
+        if len(result) > 0:
+            df.loc[df["id_cell"] == cell, "id_sib"] = int(result.iloc[0])
 
     #rearange columns
     new_cols = [c for c in df.columns.tolist() if "id_" in c ]

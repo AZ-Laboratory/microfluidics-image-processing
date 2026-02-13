@@ -21,6 +21,7 @@ dependencies:
   - jupyter
   - jupyterlab
   - ipywidgets
+  - joblib>=1.1.0
   - pip
   - pip:
       - csbdeep==0.7.2
